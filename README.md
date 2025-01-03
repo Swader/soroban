@@ -1,6 +1,6 @@
 # SSTORE2 On-Chain Storage Cost Calculator
 
-A web-based calculator for comparing on-chain storage costs across different blockchains using the SSTORE2 pattern.
+A web-based calculator for comparing on-chain storage costs across different blockchains using the SSTORE2 pattern. Live deployment at https://swader.github.io/soroban/ but also works locally if you just download it.
 
 ## Features
 
