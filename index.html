@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>SSTORE2 On-Chain Storage Cost Calculator</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .main-content {
+      display: flex;
+      flex-direction: row;
+      gap: 20px;
+      padding: 20px;
+      flex: 1;
+    }
+    .legend, .calculator, .results {
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      padding: 15px;
+      flex: 1;
+    }
+    .legend {
+      max-width: 250px;
+    }
+    .legend h2 {
+      margin-top: 0;
+    }
+    .nav {
+      background: #f8f9fa;
+      padding: 10px 20px;
+      border-bottom: 1px solid #dee2e6;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .nav-links {
+      display: flex;
+      gap: 20px;
+    }
+    .nav-right {
+      display: flex;
+      align-items: center;
+    }
+    .settings-btn {
+      background: none;
+      border: none;
+      font-size: 1.2em;
+      padding: 5px 10px;
+      margin: 0;
+      cursor: pointer;
+      opacity: 0.7;
+      transition: opacity 0.2s;
+    }
+    .settings-btn:hover {
+      opacity: 1;
+      background: none;
+    }
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.visible {
+      display: flex;
+    }
+    .modal {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      width: 90%;
+      max-width: 500px;
+      position: relative;
+    }
+    .modal h2 {
+      margin-top: 0;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #eee;
+    }
+    .modal-close {
+      position: absolute;
+      right: 20px;
+      top: 20px;
+      background: none;
+      border: none;
+      font-size: 1.5em;
+      cursor: pointer;
+      padding: 0;
+      margin: 0;
+      opacity: 0.5;
+      transition: opacity 0.2s;
+    }
+    .modal-close:hover {
+      opacity: 1;
+      background: none;
+    }
+    .settings-section {
+      margin-bottom: 20px;
+    }
+    .settings-section h3 {
+      margin-bottom: 10px;
+      color: #2c3e50;
+    }
+    .file-input {
+      border: 2px dashed #999;
+      padding: 20px;
+      margin-bottom: 10px;
+      text-align: center;
+      cursor: pointer;
+    }
+    .file-input:hover {
+      background-color: #f8f8f8;
+    }
+    .file-input input {
+      display: none;
+    }
+    label {
+      display: block;
+      margin-top: 10px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+    table, th, td {
+      border: 1px solid #ccc;
+    }
+    th, td {
+      padding: 8px;
+      text-align: center;
+    }
+    .highlight-min {
+      background-color: #d4edda;
+    }
+    .highlight-max {
+      background-color: #f8d7da;
+    }
+    .chain-checklist {
+      margin-top: 10px;
+    }
+    .chain-checklist label {
+      display: flex;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+    .chain-checklist input[type="text"] {
+      width: 70px;
+      margin-left: 5px;
+    }
+    .notice {
+      color: #b00;
+      margin-top: 10px;
+      font-weight: bold;
+    }
+    .custom-chain-row {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      margin-bottom: 4px;
+    }
+    button {
+      cursor: pointer;
+      margin-top: 10px;
+      padding: 8px 16px;
+      border: none;
+      border-radius: 4px;
+      background: #007bff;
+      color: white;
+      transition: background 0.2s;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+    .nav a {
+      color: #007bff;
+      text-decoration: none;
+    }
+    .nav a:hover {
+      text-decoration: underline;
+    }
+    .nav a.active {
+      font-weight: bold;
+    }
+    #faqContent {
+      display: none;
+      padding: 20px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    #faqContent.visible {
+      display: block;
+    }
+    #calculatorContent.hidden {
+      display: none;
+    }
+    .faq-item {
+      margin-bottom: 30px;
+    }
+    .faq-item h3 {
+      color: #2c3e50;
+      margin-bottom: 10px;
+    }
+    .faq-item p {
+      line-height: 1.6;
+      color: #34495e;
+    }
+    footer {
+      text-align: center;
+      padding: 20px;
+      background: #f8f9fa;
+      border-top: 1px solid #dee2e6;
+    }
+    footer a {
+      color: #007bff;
+      text-decoration: none;
+    }
+    footer a:hover {
+      text-decoration: underline;
+    }
+    .chain-toggles {
+      margin-bottom: 15px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      background: #f8f9fa;
+      padding: 10px;
+      border: 1px solid #dee2e6;
+      border-radius: 4px;
+    }
+    .toggle-btn {
+      padding: 6px 12px;
+      background: white;
+      border: 1px solid #dee2e6;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.9em;
+      transition: all 0.2s;
+      color: #495057;
+    }
+    .toggle-btn:hover {
+      background: #e9ecef;
+    }
+    .toggle-btn.active {
+      background: #007bff;
+      color: white;
+      border-color: #0056b3;
+    }
+    .chain-table {
+      margin-bottom: 20px;
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      border: 1px solid #dee2e6;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .chain-table th {
+      background: #f8f9fa;
+      font-weight: 600;
+      color: #495057;
+      border-bottom: 2px solid #dee2e6;
+      padding: 12px 8px;
+    }
+    .chain-table td {
+      padding: 8px;
+      border-bottom: 1px solid #dee2e6;
+      vertical-align: middle;
+    }
+    .chain-table tr:last-child td {
+      border-bottom: none;
+    }
+    .chain-table input[type="checkbox"] {
+      margin: 0 8px 0 0;
+      vertical-align: middle;
+      cursor: pointer;
+    }
+    .chain-table input[type="number"],
+    .chain-table input[type="text"] {
+      width: calc(100% - 16px);
+      padding: 6px 8px;
+      border: 1px solid #dee2e6;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    .chain-table input[type="number"]:focus,
+    .chain-table input[type="text"]:focus {
+      outline: none;
+      border-color: #80bdff;
+      box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+    }
+    .chain-type {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 0.85em;
+      font-weight: 500;
+      text-align: center;
+      min-width: 80px;
+      background: #f8d7da;
+      color: #721c24;
+    }
+    .chain-type.l1 { 
+      background: #d4edda; 
+      color: #155724;
+    }
+    .chain-type.optimistic { 
+      background: #fff3cd; 
+      color: #856404;
+    }
+    .chain-type.zk { 
+      background: #cce5ff; 
+      color: #004085;
+    }
+    .chain-type.sidechain { 
+      background: #e2e3e5; 
+      color: #383d41;
+    }
+    .chain-type.polkadot { 
+      background: #e0f2ff; 
+      color: #004085;
+    }
+    .chain-table tr:hover {
+      background-color: #f8f9fa;
+    }
+    .chain-table td {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .chain-table td:first-child {
+      white-space: normal;
+    }
+    .chain-table input[type="text"] {
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .chain-table input[type="number"] {
+      width: 100px;
+    }
+    .chain-type {
+      display: inline-block;
+      min-width: 80px;
+      text-align: center;
+    }
+    .chain-toggles {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 15px;
+      background: #f8f9fa;
+      padding: 12px;
+      border-radius: 6px;
+      border: 1px solid #dee2e6;
+    }
+    .toggle-btn {
+      padding: 8px 16px;
+      background: white;
+      border: 1px solid #dee2e6;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.9em;
+      transition: all 0.2s;
+      color: #495057;
+      min-width: 100px;
+      text-align: center;
+    }
+    .toggle-btn:hover {
+      background: #e9ecef;
+    }
+    .toggle-btn.active {
+      background: #007bff;
+      color: white;
+      border-color: #0056b3;
+    }
+    .table-container {
+      overflow-x: auto;
+      margin-bottom: 1rem;
+    }
+    .chain-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      border: 1px solid #dee2e6;
+      border-radius: 4px;
+    }
+    .chain-table th,
+    .chain-table td {
+      padding: 8px;
+      border-bottom: 1px solid #dee2e6;
+      text-align: left;
+    }
+    .chain-table th {
+      background: #f8f9fa;
+      font-weight: 600;
+      color: #495057;
+      border-bottom: 2px solid #dee2e6;
+    }
+    .chain-table tr:last-child td {
+      border-bottom: none;
+    }
+    .chain-table td > div {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .chain-table input[type="checkbox"] {
+      margin: 0;
+      cursor: pointer;
+    }
+    .chain-table input[type="number"] {
+      width: 80px;
+    }
+    .chain-table input[type="text"] {
+      width: 100%;
+    }
+    .chain-type {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 0.85em;
+      font-weight: 500;
+      text-align: center;
+      min-width: 80px;
+    }
+    .chain-type.l1 { 
+      background: #d4edda; 
+      color: #155724;
+    }
+    .chain-type.optimistic { 
+      background: #fff3cd; 
+      color: #856404;
+    }
+    .chain-type.zk { 
+      background: #cce5ff; 
+      color: #004085;
+    }
+    .chain-type.sidechain { 
+      background: #e2e3e5; 
+      color: #383d41;
+    }
+    .chain-type.polkadot { 
+      background: #e0f2ff; 
+      color: #004085;
+    }
+    .chain-toggles {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+      padding: 12px;
+      background: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 4px;
+    }
+    .toggle-btn {
+      padding: 8px 16px;
+      background: white;
+      border: 1px solid #dee2e6;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.9em;
+      color: #495057;
+      min-width: 100px;
+      transition: all 0.2s;
+    }
+    .toggle-btn:hover {
+      background: #e9ecef;
+    }
+    .toggle-btn.active {
+      background: #007bff;
+      color: white;
+      border-color: #0056b3;
+    }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <div class="nav-links">
+      <a href="#" id="calcLink" class="active">Calculator</a>
+      <a href="#" id="faqLink">FAQ</a>
+    </div>
+    <div class="nav-right">
+      <button class="settings-btn" id="settingsToggle" title="Settings">⚙️</button>
+    </div>
+  </nav>
+
+  <!-- Settings Modal -->
+  <div class="modal-overlay" id="settingsModal">
+    <div class="modal">
+      <h2>Settings</h2>
+      <button class="modal-close" id="closeSettings">&times;</button>
+      <div class="settings-section">
+        <h3>API Configuration</h3>
+        <div id="cmcKeyContainer">
+          <label>
+            CoinMarketCap API Key (optional):
+            <input type="text" id="cmcApiKey" placeholder="Enter your API key" style="width: 100%">
+            <p style="font-size: 0.8em; color: #666; margin-top: 5px;">
+              Leave empty to use CoinGecko API (free, no key needed)
+            </p>
+          </label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="calculatorContent" class="main-content">
+    <!-- Main Calculator Form -->
+    <div class="calculator">
+      <h2>SSTORE2 Calculator</h2>
+
+      <!-- File input / manual file size -->
+      <div id="fileDropZone" class="file-input">
+        <span>Drag & drop a file here OR click to select</span>
+        <input type="file" id="fileInput" />
+      </div>
+
+      <label for="manualSize">
+        Or manually enter file size (bytes):
+        <input type="number" id="manualSize" placeholder="e.g. 1000" />
+      </label>
+
+      <div id="splitNotice" class="notice" style="display:none;">
+        Your file exceeds the EVM code size limit (24,576 bytes). It will be split into multiple contracts automatically.
+      </div>
+
+      <button id="computeBtn">Compute Storage Costs</button>
+    </div>
+
+    <!-- Chains Checklist & Custom Rows -->
+    <div class="results">
+      <h2>Chains to Compare</h2>
+      
+      <!-- Chain Selection Controls -->
+      <div class="chain-toggles">
+        <button class="toggle-btn" id="toggleAll">All Chains</button>
+        <button class="toggle-btn" id="toggleL1s">L1s</button>
+        <button class="toggle-btn" id="toggleOptimistic">Optimistic Rollups</button>
+        <button class="toggle-btn" id="toggleZK">ZK Rollups</button>
+        <button class="toggle-btn" id="toggleNone">None</button>
+      </div>
+
+      <!-- Chain Selection Table -->
+      <div class="table-container">
+        <table class="chain-table">
+          <colgroup>
+            <col style="width: 25%">
+            <col style="width: 20%">
+            <col style="width: 20%">
+            <col style="width: 35%">
+          </colgroup>
+          <thead>
+            <tr>
+              <th>Chain</th>
+              <th>Type</th>
+              <th>Gas Price (Gwei)</th>
+              <th>RPC URL</th>
+            </tr>
+          </thead>
+          <tbody id="chainChecklist">
+            <!-- Populated by JS -->
+          </tbody>
+        </table>
+      </div>
+
+      <button id="addCustomChainBtn">Add Custom Chain</button>
+
+      <!-- Results Table -->
+      <h3>Cost Comparison</h3>
+      <table id="resultsTable">
+        <thead>
+          <tr>
+            <th>Chain</th>
+            <th>File Size<br>(bytes)</th>
+            <th>Number of<br>Contracts/Tx</th>
+            <th>Gas Used</th>
+            <th>Gas Price<br>(Gwei)</th>
+            <th>Cost in Native</th>
+            <th>Native<br>Price (USD)</th>
+            <th>Total (USD)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Rows added dynamically -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="faqContent">
+    <div class="faq-item">
+      <h3>What happens when a file is bigger than the maximum contract size?</h3>
+      <p>
+        When your file exceeds the EVM's maximum contract size of 24,576 bytes, the SSTORE2 implementation automatically splits it into multiple contracts. Each contract stores a chunk of your data, and a main contract keeps track of these storage contracts' addresses in sequence. When reading the data back, the implementation automatically concatenates all chunks in the correct order, making the splitting process transparent to the end user.
+      </p>
+    </div>
+
+    <div class="faq-item">
+      <h3>How does SSTORE2 work for storing data?</h3>
+      <p>
+        SSTORE2 is a clever pattern that stores data as contract code instead of contract storage. It works by:
+        <ol>
+          <li>Taking your data and wrapping it in minimal bytecode that makes it valid EVM code</li>
+          <li>Deploying this "data contract" using CREATE2 (for deterministic addresses)</li>
+          <li>Storing only the address of this contract (20 bytes) in the main contract</li>
+          <li>When reading, it uses EXTCODECOPY to efficiently retrieve the data</li>
+        </ol>
+        This approach is much more gas efficient than traditional storage because contract deployment has different gas mechanics than storage operations.
+      </p>
+    </div>
+
+    <div class="faq-item">
+      <h3>Why is SSTORE2 more efficient than SSTORE?</h3>
+      <p>
+        SSTORE2 is more efficient than regular SSTORE operations for several reasons:
+        <ol>
+          <li>SSTORE costs 20,000 gas for a new storage slot, while code storage only costs about 200 gas per byte</li>
+          <li>SSTORE requires 32-byte alignment, potentially wasting space, while code storage is byte-aligned</li>
+          <li>Multiple SSTORE operations are needed for large data, while code storage is contiguous</li>
+          <li>Reading from code (EXTCODECOPY) is cheaper than reading from storage (SLOAD)</li>
+        </ol>
+        For example, storing 24kb of data using SSTORE would cost approximately 15M gas, while using SSTORE2 would cost only about 5M gas.
+      </p>
+    </div>
+
+    <div class="faq-item">
+    <h3>How are Polygon fees calculated?</h3>
+    <p>
+      Polygon's fee structure involves both L2 transaction fees and L1 security costs:
+      <ol>
+        <li>Direct transaction fees are paid in POL on the Polygon network</li>
+        <li>Every 30 minutes, Polygon submits a "checkpoint" to Ethereum containing state changes</li>
+        <li>Each checkpoint costs approximately 0.02 ETH on mainnet (0.06 ETH per hour)</li>
+        <li>On average, a checkpoint contains about 1500 blocks</li>
+        <li>Each block contains approximately 80 transactions</li>
+        <li>This means each checkpoint includes roughly 120,000 transactions (1500 * 80)</li>
+        <li>The L1 costs (0.02 ETH) are effectively distributed across these 120,000 transactions</li>
+      </ol>
+      Therefore, the true cost of a Polygon transaction is:
+      <ul>
+        <li>Direct cost: The POL fee you pay for the transaction</li>
+        <li>Indirect L1 cost: Your share of the checkpoint cost (approximately 0.02 ETH / 120,000 transactions)</li>
+      </ul>
+      This calculator includes both components to give you the full cost of storing data on Polygon.
+    </p>
+  </div>
+
+  <footer>
+    <p>Made by <a href="https://x.com/bitfalls" target="_blank">@bitfalls</a></p>
+  </footer>
+
+<script src="logic.js"></script>
+</body>
+</html>
